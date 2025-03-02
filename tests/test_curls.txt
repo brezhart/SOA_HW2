@@ -1,0 +1,10 @@
+curl -X POST -H "Content-Type: application/json" -d '{
+    "login": "john_doe",
+    "password": "Pswd1234"
+}' http://localhost:8000/login
+
+
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{
+    "first_name": "Updated"
+}' http://localhost:8000/profile
+
