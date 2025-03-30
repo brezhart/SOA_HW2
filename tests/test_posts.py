@@ -163,7 +163,6 @@ def test_private_post_access(auth_token):
     assert response.status_code == 200
     second_token = response.json()["access_token"]
     
-    # Try to access private post as second user
     headers = {"Authorization": f"Bearer {second_token}"}
     response = requests.get(f"{BASE_URL}/posts/{post_id}", headers=headers)
     assert response.status_code == 403  # Forbidden
@@ -180,19 +179,17 @@ def test_unauthorized_access():
 
 def test_invalid_post_data(auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    
-    # Missing required fields
+
     invalid_post = {
         "title": "Test"
         # Missing description
     }
     response = requests.post(f"{BASE_URL}/posts", json=invalid_post, headers=headers)
-    assert response.status_code in [400, 422]  # Bad request or Unprocessable Entity
+    assert response.status_code in [422]
     
-    # Invalid title (too short)
     invalid_post = {
         "title": "",
         "description": "Test description"
     }
     response = requests.post(f"{BASE_URL}/posts", json=invalid_post, headers=headers)
-    assert response.status_code in [400, 422]  # Bad request or Unprocessable Entity
+    assert response.status_code in [422]
