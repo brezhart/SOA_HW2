@@ -4,3 +4,4 @@ protobuf==4.22.3
 sqlalchemy==2.0.9
 psycopg2-binary==2.9.6
 pydantic>=1.8.0
+kafka-python==2.0.2

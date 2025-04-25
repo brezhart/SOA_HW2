@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from . import models, schemas, database
+from .kafka_producer import kafka_client
 
 app = FastAPI()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -31,16 +32,25 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
     hashed_password = pwd_context.hash(user.password)
     
+    registration_time = datetime.utcnow()
+    
     new_user = models.User(
         **user.dict(exclude={"password"}),
         hashed_password=hashed_password,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=registration_time,
+        updated_at=registration_time
     )
     
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Send registration event to Kafka
+    kafka_client.send_user_registration_event(
+        user_id=new_user.id,
+        registration_date=registration_time
+    )
+    
     return new_user
 
 @app.post("/login")
@@ -99,4 +109,3 @@ def update_user(
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-

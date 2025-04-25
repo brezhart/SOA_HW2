@@ -1,0 +1,84 @@
+# Post Interaction API Test Commands
+
+# Prerequisites:
+# 1. Register a user
+# 2. Login to get a token
+# 3. Create a post to interact with
+
+# Register a user
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "testuser",
+    "password": "Password123",
+    "email": "test@example.com",
+    "first_name": "Test",
+    "last_name": "User",
+    "birth_date": "1990-01-01",
+    "phone": "+12345678901"
+  }'
+
+# Login to get a token
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "testuser",
+    "password": "Password123"
+  }'
+
+# Store the token (replace with your actual token)
+TOKEN="your_token_here"
+
+# Create a post
+curl -X POST http://localhost:8000/posts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "Test Post",
+    "description": "This is a test post for interaction testing",
+    "is_private": false,
+    "tags": ["test", "interaction"]
+  }'
+
+# Store the post ID (replace with the actual post ID)
+POST_ID="your_post_id_here"
+
+# View a post
+curl -X POST http://localhost:8000/posts/$POST_ID/view \
+  -H "Authorization: Bearer $TOKEN"
+
+# Like a post
+curl -X POST http://localhost:8000/posts/$POST_ID/like \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "is_like": true
+  }'
+
+# Unlike a post
+curl -X POST http://localhost:8000/posts/$POST_ID/like \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "is_like": false
+  }'
+
+# Add a comment to a post
+curl -X POST http://localhost:8000/posts/$POST_ID/comments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "content": "This is a test comment"
+  }'
+
+# Get comments for a post
+curl -X GET http://localhost:8000/posts/$POST_ID/comments \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get comments with pagination
+curl -X GET "http://localhost:8000/posts/$POST_ID/comments?page=1&page_size=10" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get post details (should include view, like, and comment counts)
+curl -X GET http://localhost:8000/posts/$POST_ID \
+  -H "Authorization: Bearer $TOKEN"

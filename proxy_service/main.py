@@ -5,20 +5,21 @@ from jose import JWTError, jwt
 import httpx
 from typing import List, Optional
 
-from schemas import PostCreate, PostUpdate, Post, PaginatedPosts
+from schemas import (
+    PostCreate, PostUpdate, Post, PaginatedPosts,
+    PostViewResponse, PostLikeRequest, PostLikeResponse,
+    CommentCreate, Comment, PaginatedComments
+)
 from grpc_client import PostServiceClient
 
 app = FastAPI()
 USER_SERVICE_URL = "http://user_service:8001"
 
-# Initialize gRPC client
 post_service = PostServiceClient()
 
-# JWT {
 SECRET_KEY = "JOPAAAAAAAA"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-# }
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -62,7 +63,10 @@ async def register_proxy(user_data: dict):
             status_code=response.status_code,
             detail=response.json().get("detail", "Registration failed")
         )
-    return response.json()
+    
+    user_data = response.json()
+    
+    return user_data
 
 @app.post("/login")
 async def login_proxy(credentials: dict):
@@ -114,7 +118,6 @@ async def update_profile_proxy(
 async def health_check():
     return {"status": "ok"}
 
-# Post API endpoints
 
 @app.post("/posts", response_model=Post, status_code=status.HTTP_201_CREATED)
 async def create_post(
@@ -150,7 +153,6 @@ async def get_post(
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        # Extract user ID from the current user
         user_id = current_user.get("id")
         if not user_id:
             raise HTTPException(
@@ -273,7 +275,6 @@ async def list_posts(
                 detail="User ID not found"
             )
         
-        # Call gRPC service to list posts
         result = post_service.list_posts(
             page=page,
             page_size=page_size,
@@ -286,3 +287,155 @@ async def list_posts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+@app.post("/posts/{post_id}/view", response_model=PostViewResponse)
+async def view_post(
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.view_post(post_id=post_id, user_id=user_id)
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.post("/posts/{post_id}/like", response_model=PostLikeResponse)
+async def like_post(
+    like_data: PostLikeRequest,
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.like_post(
+            post_id=post_id,
+            user_id=user_id,
+            is_like=like_data.is_like
+        )
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.post("/posts/{post_id}/comments", response_model=Comment)
+async def create_comment(
+    comment_data: CommentCreate,
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.comment_post(
+            post_id=post_id,
+            user_id=user_id,
+            content=comment_data.content
+        )
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.get("/posts/{post_id}/comments", response_model=PaginatedComments)
+async def list_comments(
+    post_id: int = Path(..., gt=0),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.list_comments(
+            post_id=post_id,
+            page=page,
+            page_size=page_size
+        )
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
