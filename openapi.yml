@@ -159,6 +159,148 @@ paths:
           description: Post not found
         500:
           description: Internal server error
+          
+  /posts/{post_id}/view:
+    post:
+      summary: View a post
+      description: Records a view for the post and returns the updated view count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          description: ID of the post
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        200:
+          description: View recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostViewResponse'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden - no access to private post
+        404:
+          description: Post not found
+        500:
+          description: Internal server error
+          
+  /posts/{post_id}/like:
+    post:
+      summary: Like or unlike a post
+      description: Toggles like status for the post and returns the updated like count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          description: ID of the post
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostLikeRequest'
+      responses:
+        200:
+          description: Like status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostLikeResponse'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden - no access to private post
+        404:
+          description: Post not found
+        500:
+          description: Internal server error
+          
+  /posts/{post_id}/comments:
+    post:
+      summary: Add a comment to a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          description: ID of the post
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreate'
+      responses:
+        200:
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden - no access to private post
+        404:
+          description: Post not found
+        500:
+          description: Internal server error
+          
+    get:
+      summary: Get comments for a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          description: ID of the post
+          schema:
+            type: integer
+            minimum: 1
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: page_size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        200:
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedComments'
+        401:
+          description: Unauthorized
+        404:
+          description: Post not found
+        500:
+          description: Internal server error
     
     put:
       summary: Update a post
@@ -394,6 +536,12 @@ components:
           type: array
           items:
             type: string
+        views_count:
+          type: integer
+        likes_count:
+          type: integer
+        comments_count:
+          type: integer
       required:
         - id
         - title
@@ -403,6 +551,9 @@ components:
         - updated_at
         - is_private
         - tags
+        - views_count
+        - likes_count
+        - comments_count
 
     PaginatedPosts:
       type: object
@@ -421,6 +572,91 @@ components:
           type: integer
       required:
         - posts
+        - total_count
+        - page
+        - page_size
+        - total_pages
+        
+    PostViewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        views_count:
+          type: integer
+      required:
+        - success
+        - views_count
+        
+    PostLikeRequest:
+      type: object
+      properties:
+        is_like:
+          type: boolean
+          description: True to like, false to unlike
+          default: true
+      
+    PostLikeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        likes_count:
+          type: integer
+        is_liked:
+          type: boolean
+      required:
+        - success
+        - likes_count
+        - is_liked
+        
+    CommentCreate:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required:
+        - content
+        
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        post_id:
+          type: integer
+        user_id:
+          type: integer
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - post_id
+        - user_id
+        - content
+        - created_at
+        
+    PaginatedComments:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        total_count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+      required:
+        - comments
         - total_count
         - page
         - page_size
