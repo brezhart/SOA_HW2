@@ -7,12 +7,21 @@ services:
       - "8000:8000"
     depends_on:
       - user_service
+      - post_service
 
   user_service:
     build: ./user_service
     environment:
       - DATABASE_URL=postgresql://user:password@postgres/mydatabase
       - POSTGRES_PASSWORD=password
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  post_service:
+    build: ./post_service
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/mydatabase
     depends_on:
       postgres:
         condition: service_healthy

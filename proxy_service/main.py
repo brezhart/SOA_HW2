@@ -1,11 +1,18 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Path
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 import httpx
+from typing import List, Optional
+
+from schemas import PostCreate, PostUpdate, Post, PaginatedPosts
+from grpc_client import PostServiceClient
 
 app = FastAPI()
 USER_SERVICE_URL = "http://user_service:8001"
+
+# Initialize gRPC client
+post_service = PostServiceClient()
 
 # JWT {
 SECRET_KEY = "JOPAAAAAAAA"
@@ -106,3 +113,176 @@ async def update_profile_proxy(
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+# Post API endpoints
+
+@app.post("/posts", response_model=Post, status_code=status.HTTP_201_CREATED)
+async def create_post(
+    post_data: PostCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.create_post(
+            title=post_data.title,
+            description=post_data.description,
+            creator_id=user_id,
+            is_private=post_data.is_private,
+            tags=post_data.tags
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.get("/posts/{post_id}", response_model=Post)
+async def get_post(
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        # Extract user ID from the current user
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.get_post(post_id=post_id, user_id=user_id)
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.put("/posts/{post_id}", response_model=Post)
+async def update_post(
+    post_data: PostUpdate,
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        result = post_service.update_post(
+            post_id=post_id,
+            user_id=user_id,
+            title=post_data.title,
+            description=post_data.description,
+            is_private=post_data.is_private,
+            tags=post_data.tags
+        )
+        
+        return result
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_post(
+    post_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        post_service.delete_post(post_id=post_id, user_id=user_id)
+        
+        return None
+    except Exception as e:
+        error_message = str(e)
+        
+        if "Post not found" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message
+            )
+        elif "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_message
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_message
+            )
+
+@app.get("/posts", response_model=PaginatedPosts)
+async def list_posts(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        # Extract user ID from the current user
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found"
+            )
+        
+        # Call gRPC service to list posts
+        result = post_service.list_posts(
+            page=page,
+            page_size=page_size,
+            user_id=user_id
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

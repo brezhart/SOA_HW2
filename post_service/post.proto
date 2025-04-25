@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package post;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service PostService {
+  rpc CreatePost(CreatePostRequest) returns (Post);
+  
+  rpc GetPost(GetPostRequest) returns (Post);
+
+  rpc UpdatePost(UpdatePostRequest) returns (Post);
+
+  rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
+
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+}
+
+message Post {
+  int32 id = 1;
+  string title = 2;
+  string description = 3;
+  int32 creator_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  bool is_private = 7;
+  repeated string tags = 8;
+}
+
+message CreatePostRequest {
+  string title = 1;
+  string description = 2;
+  int32 creator_id = 3;
+  bool is_private = 4;
+  repeated string tags = 5;
+}
+
+message GetPostRequest {
+  int32 id = 1;
+  int32 user_id = 2; // For checking if user can access private post
+}
+
+message UpdatePostRequest {
+  int32 id = 1;
+  string title = 2;
+  string description = 3;
+  int32 user_id = 4; // For authorization check
+  bool is_private = 5;
+  repeated string tags = 6;
+}
+
+message DeletePostRequest {
+  int32 id = 1;
+  int32 user_id = 2; // For authorization check
+}
+
+message ListPostsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 user_id = 3; // For filtering private posts
+}
+
+message ListPostsResponse {
+  repeated Post posts = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  int32 total_pages = 5;
+}

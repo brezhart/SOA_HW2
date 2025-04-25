@@ -1,0 +1,56 @@
+# Test curl commands for the post API
+
+# Register a user
+curl -X POST http://localhost:8000/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "testuser",
+    "password": "Password123",
+    "email": "test@example.com",
+    "first_name": "Test",
+    "last_name": "User",
+    "birth_date": "1990-01-01",
+    "phone": "+12345678901"
+  }'
+
+# Login to get a token
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "testuser",
+    "password": "Password123"
+  }'
+
+# Create a post
+curl -X POST http://localhost:8000/posts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "My First Post",
+    "description": "This is the content of my first post",
+    "is_private": false,
+    "tags": ["test", "first"]
+  }'
+
+# Get a post by ID
+curl -X GET http://localhost:8000/posts/POST_ID \
+  -H "Authorization: Bearer $TOKEN"
+
+# Update a post
+curl -X PUT http://localhost:8000/posts/POST_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "Updated Post Title",
+    "description": "Updated post content",
+    "is_private": true,
+    "tags": ["test", "updated"]
+  }'
+
+# List posts with pagination
+curl -X GET "http://localhost:8000/posts?page=1&page_size=10" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Delete a post (replace TOKEN and POST_ID)
+curl -X DELETE http://localhost:8000/posts/POST_ID \
+  -H "Authorization: Bearer $TOKEN"

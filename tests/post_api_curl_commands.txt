@@ -1,0 +1,34 @@
+# Post API Curl Commands
+
+# Register a user
+curl -X POST http://localhost:8000/register -H "Content-Type: application/json" -d '{"login": "testuser", "password": "Password123", "email": "test@example.com", "first_name": "Test", "last_name": "User"}'
+
+# Login to get a token
+curl -X POST http://localhost:8000/login -H "Content-Type: application/json" -d '{"login": "testuser", "password": "Password123"}'
+
+# Create a post (replace TOKEN with your actual token)
+curl -X POST http://localhost:8000/posts -H "Content-Type: application/json" -H "Authorization: Bearer TOKEN" -d '{"title": "My First Post", "description": "This is the content of my first post", "is_private": false, "tags": ["test", "first"]}'
+
+# Get a post by ID
+curl -X GET http://localhost:8000/posts/1 -H "Authorization: Bearer TOKEN"
+
+# Update a post
+curl -X PUT http://localhost:8000/posts/1 -H "Content-Type: application/json" -H "Authorization: Bearer TOKEN" -d '{"title": "Updated Post Title", "description": "Updated post content", "is_private": true}'
+
+# List posts with pagination
+curl -X GET "http://localhost:8000/posts?page=1&page_size=10" -H "Authorization: Bearer TOKEN"
+
+# Delete a post
+curl -X DELETE http://localhost:8000/posts/1 -H "Authorization: Bearer TOKEN"
+
+# Create a private post
+curl -X POST http://localhost:8000/posts -H "Content-Type: application/json" -H "Authorization: Bearer TOKEN" -d '{"title": "Private Post", "description": "This is a private post", "is_private": true, "tags": ["private"]}'
+
+# Register a second user
+curl -X POST http://localhost:8000/register -H "Content-Type: application/json" -d '{"login": "seconduser", "password": "Password123", "email": "second@example.com", "first_name": "Second", "last_name": "User"}'
+
+# Login as second user
+curl -X POST http://localhost:8000/login -H "Content-Type: application/json" -d '{"login": "seconduser", "password": "Password123"}'
+
+# Try to access private post as second user (should return 403 Forbidden)
+curl -X GET http://localhost:8000/posts/2 -H "Authorization: Bearer SECOND_TOKEN"
